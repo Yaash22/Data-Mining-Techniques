@@ -1,0 +1,99 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, roc_curve, roc_auc_score
+
+# Load data
+data = pd.read_csv('data.csv')
+
+# Calculate statistics for T50
+T50_stats = data['T50'].describe()
+
+# Plot Heatmap
+numeric_data = data.select_dtypes(include=[np.number])  # Select only numeric columns
+plt.figure(figsize=(12, 8))
+sns.heatmap(numeric_data.corr(), annot=True, cmap='coolwarm')
+plt.title('Heatmap of Correlation Matrix')
+plt.show()
+
+# Draw a scalar plot
+plt.figure(figsize=(12, 6))
+plt.plot(data['Time'], data['P2'], label='P2')
+plt.plot(data['Time'], data['P15'], label='P15')
+plt.plot(data['Time'], data['P30'], label='P30')
+plt.xlabel('Time')
+plt.ylabel('Pressure')
+plt.title('Scalar Plot of Pressure over Time')
+plt.legend()
+plt.show()
+
+# Establish polynomial regressions
+X = data['Time'].values.reshape(-1, 1)
+y_P2 = data['P2'].values
+y_P15 = data['P15'].values
+y_P30 = data['P30'].values
+
+poly = PolynomialFeatures(degree=3)
+
+X_poly = poly.fit_transform(X)
+
+# Polynomial regression for P2
+poly_reg_P2 = LinearRegression()
+poly_reg_P2.fit(X_poly, y_P2)
+
+# Polynomial regression for P15
+poly_reg_P15 = LinearRegression()
+poly_reg_P15.fit(X_poly, y_P15)
+
+# Polynomial regression for P30
+poly_reg_P30 = LinearRegression()
+poly_reg_P30.fit(X_poly, y_P30)
+
+# Use decision tree algorithm for classification
+X_train, X_test = train_test_split(data, test_size=0.2, random_state=42)
+
+# Assuming 'Criticality' is present
+y_train = X_train.pop('Critical')
+y_test = X_test.pop('Critical')
+
+dt_classifier = DecisionTreeClassifier()
+dt_classifier.fit(X_train, y_train)
+
+# Predictions
+y_pred = dt_classifier.predict(X_test)
+
+# Confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+
+# Performance metrics
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred, pos_label='Yes')
+recall = recall_score(y_test, y_pred, pos_label='Yes')
+f1 = f1_score(y_test, y_pred, pos_label='Yes')
+
+# ROC curve
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import roc_curve, roc_auc_score
+
+label_encoder = LabelEncoder()
+y_test_binary = label_encoder.fit_transform(y_test)
+
+y_proba = dt_classifier.predict_proba(X_test)[:,1]
+fpr, tpr, thresholds = roc_curve(y_test_binary, y_proba)
+roc_auc = roc_auc_score(y_test_binary, y_proba)
+
+# Output results
+print("Confusion Matrix:")
+print(conf_matrix)
+print("\nAccuracy:", accuracy)
+print("Precision:", precision)
+print("Recall:", recall)
+print("F1 Score:", f1)
+print("ROC AUC Score:", roc_auc)
+
